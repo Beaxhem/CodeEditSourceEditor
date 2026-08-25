@@ -67,10 +67,9 @@ extension TreeSitterClient {
 
         var highlights: [HighlightRange] = []
 
-        // See https://github.com/CodeEditApp/CodeEditSourceEditor/pull/228
-        if layer.id == .jsdoc {
-            highlights.append(HighlightRange(range: range, capture: .comment))
-        }
+        // Upstream special-cases JSDoc here (see
+        // https://github.com/CodeEditApp/CodeEditSourceEditor/pull/228). This fork ships
+        // only the SQL grammar, so there is no `.jsdoc` case to compare against. See FORK.md.
 
         highlights += highlightsFromCursor(cursor: queryCursor, includedRange: range)
 

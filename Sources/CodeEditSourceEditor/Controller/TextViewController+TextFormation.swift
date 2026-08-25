@@ -20,7 +20,6 @@ extension TextViewController {
         // Filters
 
         setUpOpenPairFilters(pairs: BracketPairs.allValues)
-        setUpTagFilter()
         setUpNewlineTabFilters(indentOption: configuration.behavior.indentOption)
         setUpDeletePairFilters(pairs: BracketPairs.allValues)
         setUpDeleteWhitespaceFilter(indentOption: configuration.behavior.indentOption)
@@ -28,14 +27,9 @@ extension TextViewController {
 
     /// Returns a `TextualIndenter` based on available language configuration.
     private func getTextIndenter() -> TextualIndenter {
-        switch language.id {
-        case .python:
-            return TextualIndenter(patterns: TextualIndenter.pythonPatterns)
-        case .ruby:
-            return TextualIndenter(patterns: TextualIndenter.rubyPatterns)
-        default:
-            return TextualIndenter(patterns: TextualIndenter.basicPatterns)
-        }
+        // Upstream special-cases Python and Ruby here; neither grammar ships in this
+        // fork, and SQL wants the basic patterns anyway. See FORK.md.
+        TextualIndenter(patterns: TextualIndenter.basicPatterns)
     }
 
     /// Configures pair filters and adds them to the `textFilters` array.
@@ -72,16 +66,6 @@ extension TextViewController {
     private func setUpDeleteWhitespaceFilter(indentOption: IndentOption) {
         let filter = DeleteWhitespaceFilter(indentOption: indentOption)
         textFilters.append(filter)
-    }
-
-    private func setUpTagFilter() {
-        guard let treeSitterClient, language.id.shouldProcessTags() else { return }
-        textFilters.append(TagFilter(
-            language: self.language,
-            indentOption: configuration.behavior.indentOption,
-            lineEnding: textView.layoutManager.detectedLineEnding,
-            treeSitterClient: treeSitterClient
-        ))
     }
 
     /// Determines whether or not a text mutation should be applied.
