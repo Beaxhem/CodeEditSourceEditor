@@ -8,15 +8,11 @@
 import CodeEditLanguages
 
 extension TreeSitterLanguage {
-    fileprivate static let relevantLanguages: Set<String> = [
-        CodeLanguage.html.id.rawValue,
-        CodeLanguage.javascript.id.rawValue,
-        CodeLanguage.typescript.id.rawValue,
-        CodeLanguage.jsx.id.rawValue,
-        CodeLanguage.tsx.id.rawValue
-    ]
-
+    /// Tag processing exists for the markup languages — HTML and the JavaScript/TypeScript
+    /// family — none of which this fork of `CodeEditLanguages` ships. Referencing them by
+    /// name would not compile against a SQL-only grammar set, and SQL has no tags to
+    /// process, so the answer is constant. See `FORK.md`.
     func shouldProcessTags() -> Bool {
-        return Self.relevantLanguages.contains(self.rawValue)
+        false
     }
 }

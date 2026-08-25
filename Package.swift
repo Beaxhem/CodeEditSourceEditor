@@ -19,11 +19,9 @@ let package = Package(
             url: "https://github.com/CodeEditApp/CodeEditTextView.git",
             from: "0.12.1"
         ),
-        // tree-sitter languages
-        .package(
-            url: "https://github.com/CodeEditApp/CodeEditLanguages.git",
-            exact: "0.1.20"
-        ),
+        // tree-sitter languages — Querynaut's SQL-only fork, checked out beside this
+        // package the way the app's other vendored kits are. See FORK.md.
+        .package(path: "../CodeEditLanguages"),
         // CodeEditSymbols
         .package(
             url: "https://github.com/CodeEditApp/CodeEditSymbols.git",
