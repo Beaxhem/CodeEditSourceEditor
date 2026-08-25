@@ -266,8 +266,15 @@ extension TextViewController {
                 self.findViewController?.hideFindPanel()
                 return nil
             }
-            // Attempt to show completions otherwise
-            return handleShowCompletions(event)
+            // Querynaut fork: upstream opens the completion list on Escape. Querynaut
+            // uses Escape to resign the editor — the window's focus system handles it —
+            // so this only dismisses an open list and otherwise lets the key through.
+            // ⌃Space still opens completions. See FORK.md.
+            if SuggestionController.shared.isVisible {
+                SuggestionController.shared.close()
+                return nil
+            }
+            return event
         case (controlKey, " "):
             return handleShowCompletions(event)
         case ([NSEvent.ModifierFlags.command, NSEvent.ModifierFlags.control], "j"):

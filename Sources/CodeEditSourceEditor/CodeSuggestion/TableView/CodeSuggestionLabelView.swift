@@ -20,10 +20,13 @@ struct CodeSuggestionLabelView: View {
         HStack(alignment: .center, spacing: 2) {
             suggestion.image
                 .font(.system(size: font.pointSize + 2))
-                .foregroundStyle(
-                    .white,
-                    suggestion.deprecated ? .gray : suggestion.imageColor
-                )
+                // Querynaut fork: hierarchical in `imageColor`, rather than upstream's
+                // white-on-`imageColor` palette. That palette only reads correctly for
+                // two-layer filled symbols (`k.square.fill` and friends); given a
+                // one-layer symbol it paints the whole glyph with the primary colour,
+                // which is white — invisible in light mode. See FORK.md.
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(suggestion.deprecated ? Color.gray : suggestion.imageColor)
 
             // Main label
             HStack(spacing: font.charWidth) {

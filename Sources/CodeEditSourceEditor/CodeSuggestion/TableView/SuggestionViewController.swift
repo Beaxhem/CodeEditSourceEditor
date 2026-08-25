@@ -290,7 +290,14 @@ class SuggestionViewController: NSViewController {
             return
         }
         if let model {
-            model.applySelectedItem(item: model.items[tableView.selectedRow], window: view.window)
+            // Querynaut fork: `window` deliberately nil, and the teardown goes through
+            // the window controller. Closing the `NSWindow` directly leaves
+            // `SuggestionViewModel.willClose()` uncalled, so `activeTextView` stays set —
+            // and `cursorsUpdated` then takes the "already active" path forever after,
+            // updating `items` for a window that is never shown again. Symptom: the
+            // completion list works exactly once per editor. See FORK.md.
+            model.applySelectedItem(item: model.items[tableView.selectedRow], window: nil)
+            windowController?.close()
         }
     }
 }
