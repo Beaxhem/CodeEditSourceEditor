@@ -150,6 +150,33 @@ public final class SuggestionController: NSWindowController {
             close()
         }
 
+        // Querynaut fork: if the list should be up and isn't, present it — do not ask the
+        // model first.
+        //
+        // Two states get stuck otherwise, both of them silent. A request that resolves to
+        // no items leaves `activeTextView` set with the window closed, and `model`'s
+        // "already active" branch below then refreshes `items` forever for a window that
+        // is never shown again — so a word whose first keystroke happened to match
+        // nothing kills completion until something else closes the controller. And an
+        // outstanding `itemsRequestTask` makes `model.cursorsUpdated` return immediately,
+        // so every keystroke typed while a schema fetch is in flight is dropped rather
+        // than superseding it. Going straight to `showCompletions` cancels the stale
+        // request and starts one for what was actually typed.
+        //
+        // `presentIfNot` is only set by the trigger model, on a real typed character, so
+        // this cannot resurrect a list the user dismissed by any means other than typing
+        // on — which is what upstream does anyway, by way of `activeTextView` being nil.
+        if presentIfNot && !isVisible {
+            close()
+            showCompletions(
+                textView: textView,
+                delegate: delegate,
+                cursorPosition: position,
+                asPopover: asPopover
+            )
+            return
+        }
+
         model.cursorsUpdated(textView: textView, delegate: delegate, position: position) {
             close()
 

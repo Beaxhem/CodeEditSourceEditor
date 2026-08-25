@@ -59,6 +59,15 @@ runs and `activeTextView` is left set. From then on `cursorsUpdated` takes the
 re-present the window — the completion list works exactly once per editor. Upstream bug;
 worth reporting.
 
+**`CodeSuggestion/Window/SuggestionController.swift` — `cursorsUpdated` presents the list
+whenever it should be up and isn't.** Two silent stuck states otherwise. A request that
+resolves to no items still leaves `activeTextView` set, and `SuggestionViewModel`'s
+"already active" branch then refreshes `items` forever for a window that is never shown
+again — one word whose first keystroke matched nothing disables completion until
+something else closes the controller. Separately, an outstanding `itemsRequestTask` makes
+`cursorsUpdated` return immediately, so keystrokes typed during a schema fetch are dropped
+instead of superseding it.
+
 **`CodeSuggestion/TableView/CodeSuggestionLabelView.swift` — the kind symbol is drawn
 hierarchically in `imageColor`.** Upstream draws it `.foregroundStyle(.white, imageColor)`,
 a palette style that assumes a two-layer filled symbol (`k.square.fill` and friends).
