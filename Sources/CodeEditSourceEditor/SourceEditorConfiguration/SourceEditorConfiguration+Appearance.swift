@@ -161,10 +161,14 @@ extension SourceEditorConfiguration {
             } else {
                 NSColor.selectedTextBackgroundColor.withSystemEffect(.disabled)
             }
+            // Querynaut fork: transparent, not `.windowBackgroundColor`. `useThemeBackground: false`
+            // means "let whatever is behind the editor show through", and an opaque
+            // window-coloured gutter is a white strip down the left of a tile that paints
+            // its own material. See FORK.md.
             controller.gutterView.backgroundColor = if useThemeBackground {
                 theme.background
             } else {
-                .windowBackgroundColor
+                .clear
             }
 
             controller.minimapView.setTheme(theme)

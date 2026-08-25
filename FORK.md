@@ -74,6 +74,12 @@ a palette style that assumes a two-layer filled symbol (`k.square.fill` and frie
 Given a one-layer symbol the whole glyph takes the primary colour, which is white, and
 disappears in light mode.
 
+**`SourceEditorConfiguration/SourceEditorConfiguration+Appearance.swift` — a transparent
+editor gets a transparent gutter.** With `useThemeBackground: false` upstream still paints
+the gutter `.windowBackgroundColor`, which is a white strip down the left of a tile that
+draws its own material. (The scroll view and clip view also need `drawsBackground = false`,
+which the host sets — upstream only clears the scroll view's background *colour*.)
+
 **`Controller/TextViewController+Lifecycle.swift` — Escape no longer opens the completion
 list.** Upstream treats Escape as "show completions" and swallows the event. Querynaut
 uses Escape to resign the editor, and its window focus system never sees the key. Escape
