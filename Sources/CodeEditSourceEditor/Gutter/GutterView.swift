@@ -164,7 +164,6 @@ public class GutterView: NSView {
 
         super.init(frame: .zero)
         clipsToBounds = true
-        wantsLayer = true
         layerContentsRedrawPolicy = .onSetNeedsDisplay
         translatesAutoresizingMaskIntoConstraints = false
         layer?.masksToBounds = true

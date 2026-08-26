@@ -31,7 +31,6 @@ public class TextViewController: NSViewController {
     internal(set) public var scrollView: NSScrollView!
     internal(set) public var textView: TextView!
     var gutterView: GutterView!
-    var minimapView: MinimapView!
 
     /// The reformatting guide view
     var reformattingGuideView: ReformattingGuideView!
@@ -39,8 +38,6 @@ public class TextViewController: NSViewController {
     /// Middleman between the text view to our invisible characters config, with knowledge of things like the
     ///  /// user's theme and indent option to help correctly draw invisible character placeholders.
     var invisibleCharactersCoordinator: InvisibleCharactersCoordinator
-
-    var minimapXConstraint: NSLayoutConstraint?
 
     var _undoManager: CEUndoManager!
     var systemAppearance: NSAppearance.Name?
@@ -149,9 +146,6 @@ public class TextViewController: NSViewController {
     /// Toggle the visibility of the gutter view in the editor.
     public var showGutter: Bool { configuration.peripherals.showGutter }
 
-    /// Toggle the visibility of the minimap view in the editor.
-    public var showMinimap: Bool { configuration.peripherals.showMinimap }
-
     /// Toggle the visibility of the reformatting guide in the editor.
     public var showReformattingGuide: Bool { configuration.peripherals.showReformattingGuide }
 
@@ -190,11 +184,9 @@ public class TextViewController: NSViewController {
 
     var cancellables = Set<AnyCancellable>()
 
-    /// The trailing inset for the editor. Grows when line wrapping is disabled or when the minimap is shown.
+    /// The trailing inset for the editor. Grows when line wrapping is disabled.
     var textViewTrailingInset: CGFloat {
-        // See https://github.com/CodeEditApp/CodeEditTextView/issues/66
-        // wrapLines ? 1 : 48
-        (minimapView?.isHidden ?? false) ? 0 : (minimapView?.frame.width ?? 0.0)
+        0
     }
 
     var textViewInsets: HorizontalEdgeInsets {

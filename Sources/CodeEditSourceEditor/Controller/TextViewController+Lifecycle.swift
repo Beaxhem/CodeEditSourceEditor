@@ -13,7 +13,6 @@ extension TextViewController {
         super.viewWillAppear()
         // The calculation this causes cannot be done until the view knows it's final position
         updateTextInsets()
-        minimapView.layout()
     }
 
     override public func viewDidAppear() {
@@ -43,9 +42,6 @@ extension TextViewController {
         reformattingGuideView = ReformattingGuideView(configuration: configuration)
         scrollView.addFloatingSubview(reformattingGuideView, for: .vertical)
 
-        minimapView = MinimapView(textView: textView, theme: configuration.appearance.theme)
-        scrollView.addFloatingSubview(minimapView, for: .vertical)
-
         let findViewController = FindViewController(target: self, childView: scrollView)
         addChild(findViewController)
         self.findViewController = findViewController
@@ -59,7 +55,6 @@ extension TextViewController {
 
         styleTextView()
         styleScrollView()
-        styleMinimapView()
 
         setUpHighlighter()
         setUpTextFormation()
@@ -85,28 +80,11 @@ extension TextViewController {
     func setUpConstraints() {
         guard let findViewController else { return }
 
-        let maxWidthConstraint = minimapView.widthAnchor.constraint(lessThanOrEqualToConstant: MinimapView.maxWidth)
-        let relativeWidthConstraint = minimapView.widthAnchor.constraint(
-            equalTo: view.widthAnchor,
-            multiplier: 0.17
-        )
-        relativeWidthConstraint.priority = .defaultLow
-        let minimapXConstraint = minimapView.trailingAnchor.constraint(
-            equalTo: scrollView.contentView.safeAreaLayoutGuide.trailingAnchor
-        )
-        self.minimapXConstraint = minimapXConstraint
-
         NSLayoutConstraint.activate([
             findViewController.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             findViewController.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             findViewController.view.topAnchor.constraint(equalTo: view.topAnchor),
             findViewController.view.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-
-            minimapView.topAnchor.constraint(equalTo: scrollView.contentView.topAnchor),
-            minimapView.bottomAnchor.constraint(equalTo: scrollView.contentView.bottomAnchor),
-            minimapXConstraint,
-            maxWidthConstraint,
-            relativeWidthConstraint
         ])
     }
 
@@ -118,7 +96,6 @@ extension TextViewController {
         ) { [weak self] notification in
             guard let clipView = notification.object as? NSClipView else { return }
             self?.gutterView.needsDisplay = true
-            self?.minimapXConstraint?.constant = clipView.bounds.origin.x
             NotificationCenter.default.post(name: Self.scrollPositionDidUpdateNotification, object: self)
         }
     }

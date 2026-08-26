@@ -18,7 +18,6 @@ protocol VisibleRangeProviderDelegate: AnyObject {
 @MainActor
 class VisibleRangeProvider {
     private weak var textView: TextView?
-    private weak var minimapView: MinimapView?
     weak var delegate: VisibleRangeProviderDelegate?
 
     var documentRange: NSRange {
@@ -30,9 +29,8 @@ class VisibleRangeProvider {
         return IndexSet(integersIn: textView?.visibleTextRange ?? NSRange())
     }()
 
-    init(textView: TextView, minimapView: MinimapView?) {
+    init(textView: TextView) {
         self.textView = textView
-        self.minimapView = minimapView
 
         if let scrollView = textView.enclosingScrollView {
             NotificationCenter.default.addObserver(
@@ -64,9 +62,7 @@ class VisibleRangeProvider {
             return
         }
         var visibleSet = IndexSet(integersIn: textViewVisibleRange)
-        if !(minimapView?.isHidden ?? true), let minimapVisibleRange = minimapView?.visibleTextRange {
-            visibleSet.formUnion(IndexSet(integersIn: minimapVisibleRange))
-        }
+
         self.visibleSet = visibleSet
         delegate?.visibleSetDidUpdate(visibleSet)
     }

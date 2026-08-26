@@ -10,9 +10,6 @@ extension SourceEditorConfiguration {
         /// Whether to show the gutter.
         public var showGutter: Bool = true
 
-        /// Whether to show the minimap.
-        public var showMinimap: Bool
-
         /// Whether to show the reformatting guide.
         public var showReformattingGuide: Bool
 
@@ -32,7 +29,6 @@ extension SourceEditorConfiguration {
 
         public init(
             showGutter: Bool = true,
-            showMinimap: Bool = true,
             showReformattingGuide: Bool = false,
             showFoldingRibbon: Bool = true,
             invisibleCharactersConfiguration: InvisibleCharactersConfiguration = .empty,
@@ -40,7 +36,6 @@ extension SourceEditorConfiguration {
             codeSuggestionTriggerCharacters: Set<String> = []
         ) {
             self.showGutter = showGutter
-            self.showMinimap = showMinimap
             self.showReformattingGuide = showReformattingGuide
             self.showFoldingRibbon = showFoldingRibbon
             self.invisibleCharactersConfiguration = invisibleCharactersConfiguration
@@ -54,11 +49,6 @@ extension SourceEditorConfiguration {
 
             if oldConfig?.showGutter != showGutter {
                 controller.gutterView.isHidden = !showGutter
-                shouldUpdateInsets = true
-            }
-
-            if oldConfig?.showMinimap != showMinimap {
-                controller.minimapView?.isHidden = !showMinimap
                 shouldUpdateInsets = true
             }
 

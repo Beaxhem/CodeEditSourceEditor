@@ -107,7 +107,6 @@ extension SourceEditorConfiguration {
 
             if oldConfig?.wrapLines != wrapLines {
                 controller.textView.layoutManager.wrapLines = wrapLines
-                controller.minimapView.layoutManager?.wrapLines = wrapLines
                 controller.scrollView.hasHorizontalScroller = !wrapLines
                 controller.updateTextInsets()
             }
@@ -171,7 +170,6 @@ extension SourceEditorConfiguration {
                 .clear
             }
 
-            controller.minimapView.setTheme(theme)
             controller.reformattingGuideView?.theme = theme
             controller.textView.typingAttributes = controller.attributesFor(nil)
         }
