@@ -59,7 +59,7 @@ enum Mock {
     static func textViewController(theme: EditorTheme) -> TextViewController {
         TextViewController(
             string: "",
-            language: .html,
+            language: .sql,  // Querynaut fork: CodeEditLanguages is sql-only.
             configuration: config(),
             cursorPositions: [],
             highlightProviders: [TreeSitterClient()]

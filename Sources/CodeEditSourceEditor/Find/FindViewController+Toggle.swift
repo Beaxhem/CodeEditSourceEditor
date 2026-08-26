@@ -60,6 +60,11 @@ extension FindViewController {
     /// - Sets the text view to be the first responder.
     func hideFindPanel(animated: Bool = true) {
         viewModel.isShowingFindPanel = false
+
+        // Querynaut fork: the panel is built on demand, and there is nothing to hide if it
+        // was never shown. Reading `findPanel` here would construct one only to dismiss it.
+        guard let findPanel = installedFindPanel else { return }
+
         _ = findPanel.resignFirstResponder()
         findPanel.removeEventMonitor()
 
@@ -67,7 +72,7 @@ extension FindViewController {
             viewModel.target?.findPanelWillHide(panelHeight: viewModel.panelHeight)
             setFindPanelConstraintHide()
         } onComplete: { [weak self] in
-            self?.findPanel.isHidden = true
+            self?.installedFindPanel?.isHidden = true
             self?.viewModel.isFocused = false
         }
 

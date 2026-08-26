@@ -53,6 +53,37 @@ struct FindPanelTests {
         #expect(model.panelHeight == 54)
     }
 
+    /// Querynaut fork: the panel is built on demand, not in `init`/`loadView`.
+    ///
+    /// An `NSHostingView` builds and updates its content whether or not it is hidden, and
+    /// this one's content is a search field, a controls row and a `FindMethodPicker` that
+    /// makes an `NSPopUpButton`, two labels and a menu. Sampling a layout loop in Querynaut
+    /// put the find panel's frames at roughly three quarters of main-thread layout time in
+    /// an editor that never opens find; deferring construction took the editor's layout
+    /// from 9.7ms to 0.44ms per tile.
+    ///
+    /// If this starts failing, that cost is back.
+    @Test func findPanelIsNotBuiltUntilShown() async throws {
+        #expect(viewController.installedFindPanel == nil)
+
+        viewController.showFindPanel(animated: false)
+        #expect(viewController.installedFindPanel != nil)
+        #expect(viewController.installedFindPanel?.superview === viewController.view)
+        #expect(viewController.installedFindPanel?.isHidden == false)
+
+        viewController.hideFindPanel(animated: false)
+        // Still installed once built — hiding is a constraint change, not a teardown.
+        #expect(viewController.installedFindPanel != nil)
+    }
+
+    /// Hiding a panel that was never shown must not build one just to dismiss it.
+    @Test func hidingAnUnshownPanelBuildsNothing() async throws {
+        viewController.hideFindPanel(animated: false)
+
+        #expect(viewController.installedFindPanel == nil)
+        #expect(viewModel.isShowingFindPanel == false)
+    }
+
     @Test func findPanelShowsOnCommandF() async throws {
         // Show find panel
         viewController.showFindPanel()

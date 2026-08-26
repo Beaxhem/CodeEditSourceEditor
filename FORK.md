@@ -85,6 +85,42 @@ list.** Upstream treats Escape as "show completions" and swallows the event. Que
 uses Escape to resign the editor, and its window focus system never sees the key. Escape
 now dismisses an open list and otherwise falls through; ⌃Space still opens completions.
 
+## Performance change (2026-08-26)
+
+**`Find/FindViewController.swift` — the find panel is built on demand.** Upstream creates
+`FindPanelHostingView` in `init` and adds it as a subview in `loadView`, so every editor
+carries a live `NSHostingView` from birth. `viewWillAppear` is the only thing that hides
+it — and `TextViewController` attaches this controller with `addChild` plus a manual
+`addSubview`, which drives no appearance transition, so for a host that never calls it the
+panel stays *visible*. Hiding would not have been enough anyway: an `NSHostingView` builds
+and updates its content regardless of `isHidden`, and this one's content is a search field,
+a controls row, and a `FindMethodPicker` that makes an `NSPopUpButton`, two labels and a
+menu.
+
+Sampling a pure layout loop in Querynaut — editors constructed once, asserted not rebuilt —
+put `FindMethodPicker.makeNSView` alone at ~25% of main-thread time and the find panel's
+frames together at roughly three quarters of it, in a one-line query bar that never opens
+find.
+
+`findPanel` is now a computed property that installs the panel on first access;
+``FindViewController/installedFindPanel`` is the one to read when you only want to act on a
+panel that already exists. `hideFindPanel` returns early when there is none.
+
+Measured in Querynaut (`QueryEditorKnobBenchmarks`, `InputBarAppearBenchmarks`, Release,
+4 tiles, median ns per invalidation):
+
+| | before | after |
+|---|---|---|
+| editor layout | 9.66 ms/tile | 0.44 ms/tile |
+| mounting the input bar (⌘L) | 29 ms/tile | 4.9 ms/tile |
+
+`FindPanelTests.findPanelIsNotBuiltUntilShown` and `hidingAnUnshownPanelBuildsNothing`
+guard it. Upstream bug, and worth reporting — it costs every embedder, not just this one.
+
+Also `Tests/CodeEditSourceEditorTests/Mock.swift` now asks for `.sql` rather than `.html`,
+which the SQL-only `CodeEditLanguages` no longer defines. The rest of the test target still
+does not compile for the same reason.
+
 ## Merging upstream
 
 ```
