@@ -94,7 +94,7 @@ extension TextViewController {
             object: scrollView.contentView,
             queue: .main
         ) { [weak self] notification in
-            guard let clipView = notification.object as? NSClipView else { return }
+            guard notification.object as? NSClipView != nil else { return }
             self?.gutterView.needsDisplay = true
             NotificationCenter.default.post(name: Self.scrollPositionDidUpdateNotification, object: self)
         }

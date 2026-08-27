@@ -228,11 +228,16 @@ extension Highlighter: @preconcurrency NSTextStorageDelegate {
 
         styleContainer.storageUpdated(editedRange: editedRange, changeInLength: delta)
 
-        if delta > 0 {
-            visibleRangeProvider.visibleSet.insert(range: editedRange)
-        }
+        // Before anything can ask a provider for highlights again, its index sets have to be moved
+        // to where the edit put them — see `HighlightProviderState.storageUpdated`. Until they are,
+        // every index past `editedRange` names the wrong character.
+        highlightProviders.forEach { $0.storageUpdated(editedRange: editedRange, changeInLength: delta) }
 
-        visibleRangeProvider.visibleTextChanged()
+        // Moves the visible set with the edit instead of recomputing it from layout. This used to
+        // insert `editedRange` and then immediately call `visibleTextChanged()`, which overwrote the
+        // insert with a range read back from a layout manager that had not finished processing the
+        // same edit — so the query below was clamped to the pre-edit document.
+        visibleRangeProvider.storageUpdated(editedRange: editedRange, changeInLength: delta)
 
         let providerRange = NSRange(location: editedRange.location, length: editedRange.length - delta)
         highlightProviders.forEach { $0.storageDidUpdate(range: providerRange, delta: delta) }

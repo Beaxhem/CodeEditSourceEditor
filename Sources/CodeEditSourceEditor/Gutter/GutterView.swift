@@ -52,7 +52,7 @@ public class GutterView: NSView {
     }
 
     @Invalidating(.display)
-    var edgeInsets: EdgeInsets = EdgeInsets(leading: 20, trailing: 12)
+    var edgeInsets: EdgeInsets = EdgeInsets(leading: 10, trailing: 12)
 
     @Invalidating(.display)
     var backgroundEdgeInsets: EdgeInsets = EdgeInsets(leading: 0, trailing: 8)

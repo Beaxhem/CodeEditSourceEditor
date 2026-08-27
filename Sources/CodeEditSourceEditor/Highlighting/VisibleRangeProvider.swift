@@ -56,12 +56,46 @@ class VisibleRangeProvider {
         )
     }
 
+    /// Keeps the visible set aligned with the document after an edit.
+    ///
+    /// Deliberately does *not* re-read `visibleTextRange`. The layout manager is a storage delegate
+    /// processing the same notification, and it is not guaranteed to be finished with it — so right
+    /// after an edit that range still describes the document as it was. Highlight queries are clamped
+    /// to this set (see `HighlightProviderState.getNextRange`), so a short answer here drops the tail
+    /// of the edit from the query, and because the truncated range is then marked *valid* nothing ever
+    /// queries it again: the text keeps the colours it had before the edit.
+    ///
+    /// Layout-driven corrections still arrive the usual way, through the frame and bounds observers.
+    func storageUpdated(editedRange: NSRange, changeInLength delta: Int) {
+        if delta != 0 {
+            // For a pure deletion `editedRange` is empty and sits at the start of what was removed —
+            // the same convention `RangeStore` reads this notification with.
+            let replaced: Range<Int> = if editedRange.length == 0 {
+                editedRange.location..<(editedRange.location - delta)
+            } else {
+                editedRange.location..<(editedRange.location + editedRange.length - delta)
+            }
+
+            visibleSet.remove(integersIn: replaced)
+            visibleSet.shift(startingAt: replaced.upperBound, by: delta)
+        }
+
+        if !editedRange.isEmpty {
+            visibleSet.insert(range: editedRange)
+        }
+
+        // No delegate call: the providers have not been told about the edit yet, so a pass kicked off
+        // here would query a tree that still describes the old text. `storageDidUpdate` runs one
+        // immediately after, which is the right moment for it.
+    }
+
     /// Updates the view to highlight newly visible text when the textview is scrolled or bounds change.
     @objc func visibleTextChanged() {
         guard let textViewVisibleRange = textView?.visibleTextRange else {
             return
         }
-        var visibleSet = IndexSet(integersIn: textViewVisibleRange)
+
+        let visibleSet = IndexSet(integersIn: textViewVisibleRange)
 
         self.visibleSet = visibleSet
         delegate?.visibleSetDidUpdate(visibleSet)

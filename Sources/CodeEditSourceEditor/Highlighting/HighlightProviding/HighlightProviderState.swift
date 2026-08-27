@@ -130,6 +130,37 @@ class HighlightProviderState {
 }
 
 extension HighlightProviderState {
+    /// Keeps ``validSet`` aligned with the document after an edit.
+    ///
+    /// It is a plain index set in document coordinates, so an insertion or a deletion moves every
+    /// index after it. Without this it goes on naming the characters that *used* to sit at those
+    /// offsets, and text after an edit reads as already-highlighted — so nothing queries it again and
+    /// it keeps the colours it had before the edit. That is mostly hidden by ``applyEdit`` returning a
+    /// generous invalid set, but not on the path where the edit is cancelled and only the edited range
+    /// is invalidated.
+    ///
+    /// Mirrors the convention `RangeStore` uses for the same notification: for a pure deletion
+    /// `editedRange` is empty and sits at the start of what was removed.
+    ///
+    /// ``pendingSet`` is deliberately left alone. A query in flight completes against the range it was
+    /// *requested* with — see ``queryHighlights`` — so moving those indices here would leave residue
+    /// that `remove(integersIn:)` no longer matches, and an index stuck in `pendingSet` is subtracted
+    /// from every future query for the lifetime of the editor. Leaving it stale costs one round trip of
+    /// imprecision instead, and clears itself exactly.
+    func storageUpdated(editedRange: NSRange, changeInLength delta: Int) {
+        guard delta != 0 else { return }
+
+        let replaced: Range<Int> = if editedRange.length == 0 {
+            editedRange.location..<(editedRange.location - delta)
+        } else {
+            editedRange.location..<(editedRange.location + editedRange.length - delta)
+        }
+
+        // Whatever was known about the replaced characters died with them.
+        validSet.remove(integersIn: replaced)
+        validSet.shift(startingAt: replaced.upperBound, by: delta)
+    }
+
     func storageWillUpdate(in range: NSRange) {
         guard let textView else { return }
         highlightProvider?.willApplyEdit(textView: textView, range: range)
