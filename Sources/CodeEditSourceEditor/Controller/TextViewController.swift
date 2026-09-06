@@ -257,10 +257,23 @@ public class TextViewController: NSViewController {
     }
 
     /// Set the contents of the editor.
+    ///
+    /// The invalidation is not optional. `setText` swaps in a whole new text storage carrying
+    /// nothing but the typing attributes, and ``setUpHighlighter()`` replaces the highlighter
+    /// with one that has neither valid nor pending ranges — and *nothing asks it for anything*.
+    /// A `Highlighter` only queries when something tells it to: an edit reaching it as a storage
+    /// delegate, or the visible range moving. Neither happens here. The edit went to the
+    /// highlighter this line replaces, and the layout pass that follows only posts a frame change
+    /// when the text view's frame actually changes — which, for a text view that fills its scroll
+    /// view, it does not. So without this the document is left in plain text until the next
+    /// keystroke or scroll, which is what writing a formatted query back into the editor looks
+    /// like: the highlighting falls off.
+    ///
     /// - Parameter text: The new contents of the editor.
     public func setText(_ text: String) {
         self.textView.setText(text)
         self.setUpHighlighter()
+        self.highlighter?.invalidate()
         self.gutterView.setNeedsDisplay(self.gutterView.frame)
     }
 

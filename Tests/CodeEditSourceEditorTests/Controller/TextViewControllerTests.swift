@@ -432,6 +432,43 @@ final class TextViewControllerTests: XCTestCase {
         XCTAssertEqual(controller.cursorPositions[1].start.column, 1)
     }
 
+    /// `setText` replaces the text storage and the highlighter with it, and nothing else asks the
+    /// new one to do anything — so unless it invalidates, text written into the editor from
+    /// outside (a formatted query, a restored one) stays unhighlighted until the next keystroke.
+    func test_setTextHighlightsNewText() {
+        var queriedRanges: [NSRange] = []
+        let provider = Mock.highlightProvider(
+            onSetUp: { _ in },
+            onApplyEdit: { _, _, _ in .success(IndexSet()) },
+            onQueryHighlightsFor: { _, range in
+                queriedRanges.append(range)
+                return .success([])
+            }
+        )
+
+        let controller = TextViewController(
+            string: "",
+            language: .sql,
+            configuration: Mock.config(),
+            cursorPositions: [],
+            highlightProviders: [provider]
+        )
+        controller.loadView()
+        controller.view.frame = NSRect(x: 0, y: 0, width: 1000, height: 1000)
+        controller.view.layoutSubtreeIfNeeded()
+
+        queriedRanges.removeAll()
+
+        let text = "SELECT\n  id\nFROM users"
+        controller.setText(text)
+
+        let document = NSRange(location: 0, length: (text as NSString).length)
+        XCTAssertTrue(
+            queriedRanges.contains { ($0.intersection(document)?.length ?? 0) > 0 },
+            "setText left the new text unhighlighted: \(queriedRanges)"
+        )
+    }
+
     // MARK: - TreeSitterClient
 
     func test_treeSitterSetUp() {

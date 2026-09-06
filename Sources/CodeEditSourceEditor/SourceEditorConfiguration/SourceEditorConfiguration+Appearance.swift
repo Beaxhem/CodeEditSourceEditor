@@ -141,9 +141,7 @@ extension SourceEditorConfiguration {
                 range: NSRange(location: 0, length: controller.textView.textStorage.length)
             )
             controller.textView.selectionManager.selectionBackgroundColor = theme.selection
-            controller.textView.selectionManager.selectedLineBackgroundColor = getThemeBackground(
-                systemAppearance: controller.systemAppearance
-            )
+            controller.textView.selectionManager.selectedLineBackgroundColor = theme.lineHighlight
             controller.textView.selectionManager.insertionPointColor = theme.insertionPoint
             controller.textView.enclosingScrollView?.backgroundColor = if useThemeBackground {
                 theme.background
@@ -151,15 +149,9 @@ extension SourceEditorConfiguration {
                 .clear
             }
 
-            controller.gutterView.textColor = theme.text.color.withAlphaComponent(0.35)
+            controller.gutterView.textColor = theme.text.color
             controller.gutterView.selectedLineTextColor = theme.text.color
-            controller.gutterView.selectedLineColor = if useThemeBackground {
-                theme.lineHighlight
-            } else if controller.systemAppearance == .darkAqua {
-                NSColor.quaternaryLabelColor
-            } else {
-                NSColor.selectedTextBackgroundColor.withSystemEffect(.disabled)
-            }
+            controller.gutterView.selectedLineColor = theme.lineHighlight
             // Querynaut fork: transparent, not `.windowBackgroundColor`. `useThemeBackground: false`
             // means "let whatever is behind the editor show through", and an opaque
             // window-coloured gutter is a white strip down the left of a tile that paints
@@ -174,18 +166,5 @@ extension SourceEditorConfiguration {
             controller.textView.typingAttributes = controller.attributesFor(nil)
         }
 
-        /// Finds the preferred use theme background.
-        /// - Returns: The background color to use.
-        private func getThemeBackground(systemAppearance: NSAppearance.Name?) -> NSColor {
-            if useThemeBackground {
-                return theme.lineHighlight
-            }
-
-            if systemAppearance == .darkAqua {
-                return NSColor.quaternaryLabelColor
-            }
-
-            return NSColor.selectedTextBackgroundColor.withSystemEffect(.disabled)
-        }
     }
 }
