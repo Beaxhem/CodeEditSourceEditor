@@ -14,11 +14,10 @@ let package = Package(
         )
     ],
     dependencies: [
-        // A fast, efficient, text view for code.
-        .package(
-            url: "https://github.com/CodeEditApp/CodeEditTextView.git",
-            from: "0.12.1"
-        ),
+        // A fast, efficient, text view for code — Querynaut's fork of 0.12.1 with the
+        // SwiftLint build-tool plugin removed, checked out beside this package the way
+        // the app's other vendored kits are. See FORK.md.
+        .package(path: "../CodeEditTextView"),
         // tree-sitter languages — Querynaut's SQL-only fork, checked out beside this
         // package the way the app's other vendored kits are. See FORK.md.
         .package(path: "../CodeEditLanguages"),
@@ -26,11 +25,6 @@ let package = Package(
         .package(
             url: "https://github.com/CodeEditApp/CodeEditSymbols.git",
             exact: "0.2.3"
-        ),
-        // SwiftLint
-        .package(
-            url: "https://github.com/lukepistrol/SwiftLintPlugin",
-            from: "0.2.2"
         ),
         // Rules for indentation, pair completion, whitespace
         .package(
@@ -49,9 +43,6 @@ let package = Package(
                 "TextFormation",
                 "CodeEditSymbols"
             ],
-            plugins: [
-                .plugin(name: "SwiftLint", package: "SwiftLintPlugin")
-            ]
         ),
 
         // Tests for the source editor
@@ -62,9 +53,6 @@ let package = Package(
                 "CodeEditLanguages",
                 .product(name: "CustomDump", package: "swift-custom-dump")
             ],
-            plugins: [
-                .plugin(name: "SwiftLint", package: "SwiftLintPlugin")
-            ]
         ),
     ]
 )
