@@ -121,6 +121,50 @@ final class TextViewControllerIndentTests: XCTestCase {
         expectNoDifference(controller.text, expectedString)
     }
 
+    /// Outdenting a line with nothing to strip used to move the selection left by the indent width anyway,
+    /// leaving it at a negative location — which crashed a draw pass later, in `GutterView`'s `IndexSet`.
+    func testHandleInwardIndentWithNothingToRemoveLeavesSelectionAlone() {
+        controller.setText("This is a test string")
+        controller.cursorPositions = [CursorPosition(range: NSRange(location: 4, length: 0))]
+        controller.textView.selectionManager.textSelections = [.init(range: NSRange(location: 4, length: 0))]
+
+        controller.handleIndent(inwards: true)
+
+        expectNoDifference(controller.text, "This is a test string")
+        expectNoDifference(
+            controller.textView.selectionManager.textSelections.map(\.range),
+            [NSRange(location: 4, length: 0)]
+        )
+    }
+
+    /// The selection only follows the whitespace that was in front of it — a caret at column 0 does not move.
+    func testHandleInwardIndentMovesSelectionByWhatWasRemoved() {
+        // Two leading spaces, but the indent width is four: only two characters go.
+        controller.setText("  This is a test string")
+        controller.cursorPositions = [CursorPosition(range: NSRange(location: 2, length: 0))]
+        controller.textView.selectionManager.textSelections = [.init(range: NSRange(location: 2, length: 0))]
+
+        controller.handleIndent(inwards: true)
+
+        expectNoDifference(controller.text, "This is a test string")
+        expectNoDifference(
+            controller.textView.selectionManager.textSelections.map(\.range),
+            [NSRange(location: 0, length: 0)]
+        )
+
+        controller.setText("    This is a test string")
+        controller.cursorPositions = [CursorPosition(range: NSRange(location: 0, length: 0))]
+        controller.textView.selectionManager.textSelections = [.init(range: NSRange(location: 0, length: 0))]
+
+        controller.handleIndent(inwards: true)
+
+        expectNoDifference(controller.text, "This is a test string")
+        expectNoDifference(
+            controller.textView.selectionManager.textSelections.map(\.range),
+            [NSRange(location: 0, length: 0)]
+        )
+    }
+
     func testMultipleLinesHighlighted() {
         controller.setText("\tThis is a test string\n\tWith multiple lines\n\tAnd some indentation")
         var cursorPositions = [CursorPosition(range: NSRange(location: 0, length: controller.text.count))]

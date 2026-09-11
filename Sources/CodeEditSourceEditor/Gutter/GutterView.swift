@@ -272,12 +272,18 @@ public class GutterView: NSView {
         guard let textView = textView else { return }
         var attributes: [NSAttributedString.Key: Any] = [.font: font]
 
+        // Clamped to the document, because `IndexSet` traps on an out-of-bounds index rather than ignoring it,
+        // and a redraw is a bad place to discover that a selection has drifted outside the text — it happens
+        // during a `CATransaction` flush, a long way from whatever moved the selection.
         var selectionRangeMap = IndexSet()
+        let documentLength = textView.documentRange.length
         textView.selectionManager?.textSelections.forEach {
-            if $0.range.isEmpty {
-                selectionRangeMap.insert($0.range.location)
+            let location = min(max($0.range.location, 0), documentLength)
+            let length = min(max($0.range.length, 0), documentLength - location)
+            if length == 0 {
+                selectionRangeMap.insert(location)
             } else {
-                selectionRangeMap.insert(range: $0.range)
+                selectionRangeMap.insert(range: NSRange(location: location, length: length))
             }
         }
 

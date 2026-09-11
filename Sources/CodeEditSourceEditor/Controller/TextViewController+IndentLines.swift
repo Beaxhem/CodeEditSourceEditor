@@ -61,7 +61,9 @@ extension TextViewController {
     ///   over the text selections, ensuring that edits do not affect the later selections.
 
     public func handleIndent(inwards: Bool = false) {
-        guard !cursorPositions.isEmpty else { return }
+        // `replaceCharacters` refuses to edit a read-only view, so without this the selection would still be
+        // moved to follow indentation that was never applied.
+        guard !cursorPositions.isEmpty, isEditable else { return }
 
         textView.undoManager?.beginUndoGrouping()
         var selectionIndex = 0
@@ -69,14 +71,22 @@ extension TextViewController {
             // get lineindex, i.e line-numbers+1
             guard let lineIndexes = getOverlappingLines(for: selection.range) else { return }
 
-            adjustIndentation(lineIndexes: lineIndexes, inwards: inwards)
+            // How far into its own line the selection starts, measured before the edit. Outdenting can only
+            // pull the selection back over whitespace that was in front of it, so this is the ceiling on how
+            // far it may move.
+            let lineStart = textView.layoutManager.textLineForOffset(selection.range.location)?.range.lowerBound
+            let column = selection.range.location - (lineStart ?? 0)
+
+            let changed = adjustIndentation(lineIndexes: lineIndexes, inwards: inwards)
 
             updateSelection(
                 selection: selection,
                 textSelectionCount: textView.selectionManager.textSelections.count,
                 inwards: inwards,
                 lineCount: lineIndexes.count,
-                selectionIndex: selectionIndex
+                selectionIndex: selectionIndex,
+                changed: changed,
+                column: column
             )
 
             selectionIndex += 1
@@ -84,12 +94,26 @@ extension TextViewController {
         textView.undoManager?.endUndoGrouping()
     }
 
+    /// Moves a selection to follow the indentation that was just applied to its lines.
+    ///
+    /// - Parameters:
+    ///   - changed: How many characters ``adjustIndentation(lineIndexes:inwards:)`` actually added or removed —
+    ///     on the line the selection starts on, and across all of the selection's lines.
+    ///   - column: How far into its own line the selection started, before the edit.
+    ///
+    /// Outdenting asks for `charCount` characters per line but strips only the whitespace that is there, and it
+    /// strips it from the head of the line, which may be behind the selection rather than in front of it. So the
+    /// selection moves by what was applied *ahead of it*, not by what was asked for: a caret on a line with
+    /// nothing to strip, or already sitting at column 0, does not move at all. Shifting by the requested amount
+    /// is how the location went negative — a crash a whole draw pass later, in the gutter's `IndexSet`.
     private func updateSelection(
         selection: TextSelectionManager.TextSelection,
         textSelectionCount: Int,
         inwards: Bool,
         lineCount: Int,
-        selectionIndex: Int
+        selectionIndex: Int,
+        changed: (firstLine: Int, total: Int),
+        column: Int
     ) {
         let sectionModifier = calculateSelectionIndentationAdjustment(
             textSelectionCount: textSelectionCount,
@@ -97,13 +121,14 @@ extension TextViewController {
             lineCount: lineCount
         )
 
-        let charCount = configuration.behavior.indentOption.charCount
+        // What moved in front of the selection moves the selection; the rest of it moved inside, and so
+        // changes the length instead.
+        let leading = inwards ? min(changed.firstLine, column) : changed.firstLine
+        let inside = changed.total - leading
 
-        selection.range.location += inwards ? -charCount * sectionModifier : charCount * sectionModifier
-        if lineCount > 1 {
-            let ammount = charCount * (lineCount - 1)
-            selection.range.length += inwards ? -ammount : ammount
-        }
+        let locationDelta = (inwards ? -leading : leading) * sectionModifier
+        selection.range.location = max(0, selection.range.location + locationDelta)
+        selection.range.length = max(0, selection.range.length + (inwards ? -inside : inside))
     }
 
     private func calculateSelectionIndentationAdjustment(
@@ -168,71 +193,82 @@ extension TextViewController {
         return startLineInfo.index...endLineIndex
     }
 
-    private func adjustIndentation(lineIndexes: ClosedRange<Int>, inwards: Bool) {
+    /// - Returns: The number of characters added or removed on the first line, and across all of them.
+    private func adjustIndentation(lineIndexes: ClosedRange<Int>, inwards: Bool) -> (firstLine: Int, total: Int) {
         let indentationChars: String = configuration.behavior.indentOption.stringValue
+        var firstLine = 0
+        var total = 0
         for lineIndex in lineIndexes {
-            adjustIndentation(
+            let changed = adjustIndentation(
                 lineIndex: lineIndex,
                 indentationChars: indentationChars,
                 inwards: inwards
             )
+            if lineIndex == lineIndexes.lowerBound {
+                firstLine = changed
+            }
+            total += changed
         }
+        return (firstLine, total)
     }
 
-    private func adjustIndentation(lineIndex: Int, indentationChars: String, inwards: Bool) {
-        guard let lineInfo = textView.layoutManager.textLineForIndex(lineIndex) else { return }
+    /// - Returns: The number of characters added or removed on the line.
+    private func adjustIndentation(lineIndex: Int, indentationChars: String, inwards: Bool) -> Int {
+        guard let lineInfo = textView.layoutManager.textLineForIndex(lineIndex) else { return 0 }
 
         if inwards {
             if configuration.behavior.indentOption != .tab {
-                removeLeadingSpaces(lineInfo: lineInfo, spaceCount: indentationChars.count)
+                return removeLeadingSpaces(lineInfo: lineInfo, spaceCount: indentationChars.count)
             } else {
-                removeLeadingTab(lineInfo: lineInfo)
+                return removeLeadingTab(lineInfo: lineInfo)
             }
         } else {
-            addIndentation(lineInfo: lineInfo, indentationChars: indentationChars)
+            return addIndentation(lineInfo: lineInfo, indentationChars: indentationChars)
         }
     }
 
     private func addIndentation(
         lineInfo: TextLineStorage<TextLine>.TextLinePosition,
         indentationChars: String
-    ) {
+    ) -> Int {
         textView.replaceCharacters(
             in: NSRange(location: lineInfo.range.lowerBound, length: 0),
             with: indentationChars,
             skipUpdateSelection: true
         )
+        return (indentationChars as NSString).length
     }
 
     private func removeLeadingSpaces(
         lineInfo: TextLineStorage<TextLine>.TextLinePosition,
         spaceCount: Int
-    ) {
-        guard let lineContent = textView.textStorage.substring(from: lineInfo.range) else { return }
+    ) -> Int {
+        guard let lineContent = textView.textStorage.substring(from: lineInfo.range) else { return 0 }
 
         let removeSpacesCount = countLeadingSpacesUpTo(line: lineContent, maxCount: spaceCount)
 
-        guard removeSpacesCount > 0 else { return }
+        guard removeSpacesCount > 0 else { return 0 }
 
         textView.replaceCharacters(
             in: NSRange(location: lineInfo.range.lowerBound, length: removeSpacesCount),
             with: "",
             skipUpdateSelection: true
         )
+        return removeSpacesCount
     }
 
-    private func removeLeadingTab(lineInfo: TextLineStorage<TextLine>.TextLinePosition) {
-        guard let lineContent = textView.textStorage.substring(from: lineInfo.range) else {
-            return
+    private func removeLeadingTab(lineInfo: TextLineStorage<TextLine>.TextLinePosition) -> Int {
+        guard let lineContent = textView.textStorage.substring(from: lineInfo.range),
+              lineContent.first == "\t" else {
+            return 0
         }
 
-        if lineContent.first == "\t" {
-            textView.replaceCharacters(
-                in: NSRange(location: lineInfo.range.lowerBound, length: 1),
-                with: "",
-                skipUpdateSelection: true
-            )
-        }
+        textView.replaceCharacters(
+            in: NSRange(location: lineInfo.range.lowerBound, length: 1),
+            with: "",
+            skipUpdateSelection: true
+        )
+        return 1
     }
 
     func countLeadingSpacesUpTo(line: String, maxCount: Int) -> Int {
